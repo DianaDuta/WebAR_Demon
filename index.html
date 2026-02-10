@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Demonio AR</title>
+
+    <!-- Estilo para sobreponer el video de la cámara y el canvas -->
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <script>
+      // ====================================================
+      // 1. COMPONENTE PERSONALIZADO: "GESTOR DE ANIMACIÓN"
+      // ====================================================
+      // Se crea un componente para buscar la animación #4 automáticamente (inactivo).
+      
+      AFRAME.registerComponent('controlador-demonio', {
+        init: function () {
+          const el = this.el; // Referencia al objeto 3D (el demonio)
+
+          // Evento: Se dispara cuando el modelo 3D termina de cargar en memoria
+          el.addEventListener('model-loaded', (e) => {
+            const model = el.getObject3D('mesh');
+            
+            // Los archivos GLB guardan las animaciones en un Array []
+            // Cojo la animación 4 de la lista (índice 3 del array)
+            const INDICE_ANIMACION = 3; 
+
+            if (model.animations && model.animations.length > INDICE_ANIMACION) {
+              const aANIMACION = model.animations[INDICE_ANIMACION].name;
+                            
+              // Ahora se inyecta el componente animation-mixer con el nombre exacto
+              el.setAttribute('animation-mixer', {
+                clip: aANIMACION, // El nombre exacto
+                loop: 'repeat',        // Bucle infinito
+                timeScale: 0           // EMPEZAR PAUSADO (velocidad 0)
+              });
+            } else {
+              console.error("ERROR: No se encontró la animación número 4 en el archivo.");
+            }
+          });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <!----------------------------------------------------------->
+    <!------------------------- MIND AR ------------------------->
+    <!----------------------------------------------------------->
+    <a-scene
+      mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/DianaDuta/WebAR_Demon@main/target.mind"
+      renderer="colorManagement: true, physicallyCorrectLights" 
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false">  <!-- PERMISOS -->
+
+      <a-assets>
+        <a-asset-item id="demonioModel" src="./Demon.glb"></a-asset-item>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="targetEntity" mindar-image-target="targetIndex: 0">
+        
+        <a-gltf-model 
+            src="#demonioModel" 
+            controlador-demonio
+            rotation="0 0 0" 
+            position="0 -0.5 0"
+            scale="0.65 0.65 0.65"> 
+        </a-gltf-model>
+
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // ==========================================
+      // 3. LÓGICA DE CONTROL (Play/Pause y Foto)
+      // ==========================================
+      
+      const target = document.getElementById("targetEntity");
+      // Se busca el modelo dentro del target para controlarlo
+      // NOTA: querySelector espera a que el DOM esté listo
+      
+      // LÓGICA PLAY (cuando se encuentra el target)     
+      target.addEventListener("targetFound", () => {
+        console.log("Target detectado. Reproduciendo animación.");
+        const modelo = document.querySelector('a-gltf-model');
+        // timeScale = 1 significa velocidad normal (Play)
+        if(modelo) modelo.setAttribute("animation-mixer", "timeScale", 1);
+      });
+
+      // LÓGICA PAUSE (cuando se pierde el target)
+      target.addEventListener("targetLost", () => {
+        console.log("Target perdido. Pausando.");
+        const modelo = document.querySelector('a-gltf-model');
+        // timeScale = 0 congela la animación (Pause) para ahorrar batería
+        if(modelo) modelo.setAttribute("animation-mixer", "timeScale", 0);
+      });
+    </script>
+  </body>
+</html>
